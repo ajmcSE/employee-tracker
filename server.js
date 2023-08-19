@@ -1,218 +1,96 @@
-const inquirer = require('inquirer');
-const db = require('./db/connection');
-const mysql = require('mysql');
-const express = require('express');
-const { connection } = require('./db');
-const router = express.Router();
+const express = require("express");
+const mysql = require("mysql2");
+// const inquirer = require("inquirer");
 
+const app = express();
+const PORT = process.env.PORT || 3001;
 
-db.connect(async function () {
-    start();
-})
+// Creating connection to MySQL
+const db = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: "Rosahernandez14",
+  database: "tracker_db",
+});
 
-function start() {
-    inquirer.prompt([
-        {
-            type: 'list',
-            name: 'choice',
-            message: 'Select an option.',
-            choices: [
-                'View Employees',
-                'View Roles',
-                'View Departments',
-                'Add New Employee',
-                'Add Role',
-                'Add Department',
-                'Quit'
-            ],
-        }
-    ]
-    )
-        .then((answer) => {
-            switch (answer.choice) {
-                
-                case 'View Employees':
-                    
-                    viewEmployees();
-                    break;
-                case 'View Roles':
+// Connect to the database
+db.connect((err) => {
+  if (err) throw err;
+  console.log("Connected to the database");
+});
 
-                    viewRoles();
-                    break;
-                case 'View Departments':
+// Set up Express middleware
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 
-                    viewDepartments();
-                    break;
-                case 'Add New Employee':
+// Routes
+app.get("/departments", (req, res) => {
+  db.query("SELECT * FROM departments", (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
+});
 
-                    newEmployee();
-                    break;
-                // case 'Add Role':
+app.get("/roles", (req, res) => {
+  db.query("SELECT * FROM roles", (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
+});
 
-                //     addRole();
+app.get("/employees", (req, res) => {
+  db.query("SELECT * FROM employees", (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
+});
 
-                // case 'Add Department':
+app.post("/departments", (req, res) => {
+  const { name } = req.body;
+  db.query("INSERT INTO departments SET ?", { name }, (err, result) => {
+    if (err) throw err;
+    res.send(`Department "${name}" added successfully!`);
+  });
+});
 
-                //     addDepartment();
-
-                case 'Quit':
-
-                    Quit();
-                    break;
-            }
-
-        }
-
-        )
-}
-
-function viewEmployees() {
-    const request = "SELECT * FROM employees";
-    db.query(request, function(err, res) {
+app.post("/roles", (req, res) => {
+  const { title, salary, department_id } = req.body;
+  db.query(
+    "INSERT INTO roles SET ?",
+    { title, salary, department_id },
+    (err, result) => {
       if (err) throw err;
-      console.log("Viewing All Employees");
-      console.table(res);
-      inquirer.prompt([
-          {
-              type: 'list',
-              name: 'choice',
-              message: 'select an option.',
-              choices: [
-                  'Main Menu',
-                  'Quit'
-              ],
-          }
-      ])
-      .then((answer) => {
-          switch (answer.choice) {
-              case 'Main Menu':
-                  start();
-                break;
-                case 'Quit':
-                    Quit();
-          }
-      })
-    //   start();
-    }) 
-  };
+      res.send(`Role "${title}" added successfully!`);
+    }
+  );
+});
 
-function viewRoles() {
-    let request = "SELECT * FROM roles";
-    db.query(request, function(err, res) {
-        if (err) throw err;
-        console.log("Viewing All Roles");
-        console.table(res);
-        inquirer.prompt([
-            {
-                type: 'list',
-                name: 'choice',
-                message: 'select an option.',
-                choices: [
-                    'Main Menu',
-                    'Quit'
-                ]
-            }
-        ])
-        .then((answer)=>{
-            switch (answer.choice) {
-                case 'Main Menu':
-                    start();
-                    break;
-                case 'Quit':
-                Quit();
-            }
-        })
-        
-    })
-}
-function viewDepartments() {
-    const request = "SELECT * FROM department";
-    db.query(request, function(err, res) {
-        if (err) throw err;
-        console.log("Viewing All Departments");
-        console.table(res);
-        inquirer.prompt([
-            {
-                type: 'list',
-                name: 'choice',
-                message: 'select an option.',
-                choices: [
-                    'Main Menu',
-                    'Quit'
-                ]
-            }
-        ])
-       .then((answer) => {
-           switch (answer.choice){
-               case 'Main Menu':
-                   start();
-                   break;
-                   case 'Quit':
-                       Quit();
-           }
-       })
-    })
-}
+app.post("/employees", (req, res) => {
+  const { first_name, last_name, role_id, manager_id } = req.body;
+  db.query(
+    "INSERT INTO employees SET ?",
+    { first_name, last_name, role_id, manager_id },
+    (err, result) => {
+      if (err) throw err;
+      res.send(`Employee "${first_name} ${last_name}" added successfully!`);
+    }
+  );
+});
 
-function newEmployee() {
-    console.log('oy')
-    inquirer.prompt ([
-        {
-        type: 'input',
-        message: 'Enter employee first name.',
-        name: 'FirstName'
-        },
-        {
-            type: 'input',
-            message: 'Enter employee last name.',
-            name: 'LastName'
-        },
-        {
-            type: 'input',
-            message: 'Enter employee ID number',
-            name: 'EmployeeID'
-        },
-        {
-            type: 'input',
-            message: 'Enter thier managers ID',
-            name: 'ManagerID'
-        }
-        
-    ])
-    .then(function (response) {
-        connection.query('INSERT INTO employees(first_name, last_name, roles_id, manager_id) VALUES (?,?,?,?)', 
-        [response.FirstName, response.LastName, response.EmployeeID, response.ManagerID]), function(err,response) {
-            if (err) throw err;
-            console.table(res);
-            inquirer.prompt([
-                {
-                    type: 'list',
-                    name: 'choice',
-                    message: 'select an option.',
-                    choices: [
-                        'Main Menu',
-                        'Quit'
-                    ]
-                }
-            ])
-           .then((answer) => {
-               switch (answer.choice){
-                   case 'Main Menu':
-                       start();
-                       break;
-                       case 'Quit':
-                           Quit();
-               }
-           })
-        }
-    })
-}
+app.put("/employees/:id", (req, res) => {
+  const { id } = req.params;
+  const { role_id } = req.body;
+  db.query(
+    "UPDATE employees SET role_id = ? WHERE id = ?",
+    [role_id, id],
+    (err, result) => {
+      if (err) throw err;
+      res.send(`Employee with ID ${id} updated successfully!`);
+    }
+  );
+});
 
-
-function Quit() {
-    console.log('Goodbye!');
-    process.exit();
-    
-}
-
-// viewEmployees();
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
